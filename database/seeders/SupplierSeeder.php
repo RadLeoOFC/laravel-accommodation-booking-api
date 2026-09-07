@@ -14,14 +14,14 @@ class SupplierSeeder extends Seeder
     public function run(): void
     {
         Supplier::firstOrCreate([
-            'slug' => 'supplier-1',
-            'name' => 'Supplier 1',
+            'slug' => 'supplier-a',
+            'name' => 'Supplier A',
             'is_active' => true,
         ]);
 
         Supplier::firstOrCreate([
-            'slug' => 'supplier-2',
-            'name' => 'Supplier 2',
+            'slug' => 'supplier-b',
+            'name' => 'Supplier B',
             'is_active' => true,
         ]);
     }
