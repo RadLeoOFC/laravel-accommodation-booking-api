@@ -37,4 +37,11 @@ class Offer extends Model
     {
         return $this->belongsTo(OfferImport::class);
     }
+
+    protected $casts = [
+        'check_in' => 'date',
+        'check_out' => 'date',
+        'expires_at' => 'datetime',
+        'price' => 'decimal:2',
+    ];
 }
