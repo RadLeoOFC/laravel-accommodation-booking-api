@@ -23,23 +23,32 @@ class ProcessOfferImportTest extends TestCase
     {
         parent::setUp();
 
-        // UA: Фіксуємо час і створюємо постачальників для кожного тесту.
-        // EN: Freeze time and seed suppliers before each test.
+        // UA: Фіксуємо час для відтворюваності тестів.
+        // EN: Freeze time to keep the tests reproducible.
         $this->travelTo(
             Carbon::parse('2026-09-07T12:00:00Z')
         );
 
+        // UA: Створюємо постачальників у тестовій базі.
+        // EN: Create suppliers in the test database.
         $this->seed(SupplierSeeder::class);
     }
 
-    // 1. Створення житла та пропозиції / Creating a property and an offer.
+    // UA: Job обробляє імпорт і створює житло разом із пропозицією в базі.
+    // EN: The Job processes an import and persists a property and an offer.
     public function test_it_creates_a_property_and_an_offer(): void
     {
+        // UA: Створюємо імпорт із однією коректною пропозицією.
+        // EN: Create an import containing one valid offer.
         $offerData = $this->offerData();
         $import = $this->createImport([$offerData]);
 
+        // UA: Виконуємо Job напряму, без черги.
+        // EN: Run the Job directly, bypassing the queue.
         (new ProcessOfferImport($import->id))->handle();
 
+        // UA: Обробка має створити одне житло та одну пропозицію.
+        // EN: Processing must create one property and one offer.
         $this->assertDatabaseCount('properties', 1);
         $this->assertDatabaseCount('offers', 1);
 
@@ -47,6 +56,8 @@ class ProcessOfferImportTest extends TestCase
             ->where('code', $offerData['property']['code'])
             ->firstOrFail();
 
+        // UA: Перевіряємо збережені атрибути житла з payload.
+        // EN: Verify the persisted property attributes from the payload.
         $this->assertSame(
             $offerData['property']['name'],
             $property->name
@@ -61,6 +72,8 @@ class ProcessOfferImportTest extends TestCase
             ->where('external_id', $offerData['external_id'])
             ->firstOrFail();
 
+        // UA: Перевіряємо всі збережені поля пропозиції та зв’язки.
+        // EN: Verify all persisted offer fields and relationships.
         $this->assertDatabaseHas('offers', [
             'id' => $offer->id,
             'supplier_id' => $import->supplier_id,
@@ -84,9 +97,12 @@ class ProcessOfferImportTest extends TestCase
         $this->assertTrue($import->supplier->is($offer->supplier));
     }
 
-    // 2. Спільне житло / Multiple offers for the same property.
+    // UA: Кілька пропозицій з однаковим property.code використовують одне житло.
+    // EN: Multiple offers with the same property.code share a single property.
     public function test_multiple_offers_share_one_property(): void
     {
+        // UA: Дві пропозиції посилаються на одне й те саме житло за code.
+        // EN: Two offers reference the same property by code.
         $firstOffer = $this->offerData();
 
         $secondOffer = $this->offerData([
@@ -101,6 +117,8 @@ class ProcessOfferImportTest extends TestCase
 
         (new ProcessOfferImport($import->id))->handle();
 
+        // UA: Має існувати одне житло та дві окремі пропозиції.
+        // EN: There must be one property and two distinct offers.
         $this->assertDatabaseCount('properties', 1);
         $this->assertDatabaseCount('offers', 2);
 
@@ -114,15 +132,20 @@ class ProcessOfferImportTest extends TestCase
                 ->count()
         );
 
+        // UA: Лічильник processed_offers відображає обидві оброблені пропозиції.
+        // EN: The processed_offers counter reflects both processed offers.
         $this->assertEquals(
             2,
             $import->fresh()->processed_offers
         );
     }
 
-    // 3. Оновлення пропозиції / Updating an existing offer.
+    // UA: Новий імпорт того самого постачальника оновлює пропозицію з тим самим external_id без дублювання.
+    // EN: A new import from the same supplier updates the offer with the same external_id without duplication.
     public function test_a_new_import_updates_an_existing_offer(): void
     {
+        // UA: Перший імпорт створює початкову пропозицію.
+        // EN: The first import creates the initial offer.
         $firstImport = $this->createImport([
             $this->offerData(),
         ]);
@@ -133,10 +156,14 @@ class ProcessOfferImportTest extends TestCase
         $originalId = $originalOffer->id;
         $originalPropertyId = $originalOffer->property_id;
 
+        // UA: Зсуваємо час перед другим імпортом.
+        // EN: Advance time before the second import.
         $this->travelTo(
             Carbon::parse('2026-09-07T13:00:00Z')
         );
 
+        // UA: Той самий external_id, але з оновленими полями пропозиції.
+        // EN: Same external_id with updated offer fields.
         $updatedData = $this->offerData([
             'check_in' => '2026-12-10',
             'check_out' => '2026-12-15',
@@ -155,6 +182,8 @@ class ProcessOfferImportTest extends TestCase
 
         (new ProcessOfferImport($secondImport->id))->handle();
 
+        // UA: Оновлюється наявна пропозиція зі збереженням її ID та зв’язку з тим самим житлом.
+        // EN: The existing offer is updated, preserving its ID and its link to the same property.
         $this->assertDatabaseCount('properties', 1);
         $this->assertDatabaseCount('offers', 1);
 
@@ -179,13 +208,16 @@ class ProcessOfferImportTest extends TestCase
                 ->equalTo($updatedData['expires_at'])
         );
 
+        // UA: Другий імпорт завершується успішно.
+        // EN: The second import completes successfully.
         $this->assertSame(
             ImportStatus::Completed,
             $secondImport->fresh()->status
         );
     }
 
-    // 4. Різні постачальники / Identical external IDs across suppliers.
+    // UA: Один і той самий external_id може існувати у різних постачальників незалежно.
+    // EN: The same external_id is allowed independently for different suppliers.
     public function test_same_external_id_is_allowed_for_different_suppliers(): void
     {
         $offerData = $this->offerData();
@@ -219,7 +251,8 @@ class ProcessOfferImportTest extends TestCase
         ]);
     }
 
-    // 5. Успішне завершення / Successful completion metadata.
+    // UA: Після успішної обробки імпорт отримує статус completed і коректні метадані.
+    // EN: After successful processing, the import is marked completed with correct metadata.
     public function test_it_marks_the_import_as_completed(): void
     {
         $import = $this->createImport([
@@ -229,8 +262,8 @@ class ProcessOfferImportTest extends TestCase
             ]),
         ]);
 
-        // UA: Перевіряємо очищення помилки після успішної повторної обробки.
-        // EN: Verify that successful reprocessing clears an earlier error.
+        // UA: Імітуємо попередню невдалу спробу обробки.
+        // EN: Simulate a previous failed processing attempt.
         $import->status = ImportStatus::Failed;
         $import->error = 'Previous processing error.';
         $import->save();
@@ -239,6 +272,8 @@ class ProcessOfferImportTest extends TestCase
 
         $import->refresh();
 
+        // UA: Успішна обробка скидає помилку та встановлює completed.
+        // EN: Successful processing clears the error and sets completed.
         $this->assertSame(
             ImportStatus::Completed,
             $import->status
@@ -248,6 +283,8 @@ class ProcessOfferImportTest extends TestCase
         $this->assertEquals(2, $import->processed_offers);
         $this->assertNull($import->error);
 
+        // UA: Метадані часу обробки заповнюються поточним frozen-часом.
+        // EN: Processing timestamps are set to the current frozen time.
         $this->assertNotNull($import->started_at);
         $this->assertNotNull($import->completed_at);
 
@@ -255,7 +292,8 @@ class ProcessOfferImportTest extends TestCase
         $this->assertTrue($import->completed_at->equalTo(now()));
     }
 
-    // 6. Повтор завершеної Job / Reprocessing a completed import.
+    // UA: Повторний запуск Job для вже завершеного імпорту нічого не змінює.
+    // EN: Re-running the Job for an already completed import changes nothing.
     public function test_completed_import_is_not_processed_again(): void
     {
         $import = $this->createImport([
@@ -279,6 +317,8 @@ class ProcessOfferImportTest extends TestCase
             Carbon::parse('2026-09-07T13:00:00Z')
         );
 
+        // UA: Повторний handle() не повинен змінювати дані.
+        // EN: A repeated handle() must not alter persisted data.
         $job->handle();
 
         $this->assertDatabaseCount('properties', 1);
@@ -295,9 +335,12 @@ class ProcessOfferImportTest extends TestCase
         );
     }
 
-    // 7. Атомарність пакета / Rolling back the entire batch.
+    // UA: Помилка під час обробки другої пропозиції відкочує весь пакет атомарно.
+    // EN: A failure while processing the second offer rolls back the entire batch atomically.
     public function test_an_error_on_the_second_offer_rolls_back_the_batch(): void
     {
+        // UA: Пакет із двох пропозицій; друга має впасти під час збереження.
+        // EN: A two-offer batch where the second fails during persistence.
         $import = $this->createImport([
             $this->offerData(),
             $this->offerData([
@@ -356,6 +399,8 @@ class ProcessOfferImportTest extends TestCase
             $caughtException->getMessage()
         );
 
+        // UA: Обидві пропозиції намагалися зберегтися перед відкатом.
+        // EN: Both offers were attempted before the rollback.
         $this->assertSame(
             ['offer-a-10001', 'offer-a-10002'],
             $attemptedOffers
@@ -368,8 +413,8 @@ class ProcessOfferImportTest extends TestCase
 
         $import->refresh();
 
-        // UA: Статус також відкочується; failed() викликається окремо.
-        // EN: The status is also rolled back; failed() is invoked separately.
+        // UA: Відкат відновлює статус pending і початкові метадані; цей тест не викликає failed().
+        // EN: The rollback restores pending status and the original metadata; this test does not call failed().
         $this->assertSame(
             ImportStatus::Pending,
             $import->status
@@ -380,21 +425,28 @@ class ProcessOfferImportTest extends TestCase
         $this->assertNull($import->error);
     }
 
-    // 8. Остаточна помилка / Persisting a final failure.
+    // UA: Метод failed() зберігає остаточну помилку обробки імпорту.
+    // EN: The failed() method persists the import's final processing failure.
     public function test_failed_marks_the_import_as_failed(): void
     {
         $import = $this->createImport([
             $this->offerData(),
         ]);
 
+        // UA: Імітуємо остаточну помилку після вичерпання спроб Job.
+        // EN: Simulate a final failure after the Job exhausts its retries.
         $exception = new RuntimeException(
             'Import processing failed after all attempts.'
         );
 
+        // UA: Викликаємо failed() напряму; автоматичні повторні спроби черги тут не перевіряються.
+        // EN: Call failed() directly; automatic queue retries are not tested here.
         (new ProcessOfferImport($import->id))->failed($exception);
 
         $import->refresh();
 
+        // UA: failed() зберігає статус failed і текст помилки.
+        // EN: failed() persists the failed status and error message.
         $this->assertSame(
             ImportStatus::Failed,
             $import->status
@@ -408,11 +460,14 @@ class ProcessOfferImportTest extends TestCase
         $this->assertEquals(0, $import->processed_offers);
         $this->assertNull($import->completed_at);
 
+        // UA: Жодні житло чи пропозиції не повинні з’явитися в базі.
+        // EN: No properties or offers must appear in the database.
         $this->assertDatabaseCount('properties', 0);
         $this->assertDatabaseCount('offers', 0);
     }
 
-    // 9. Захист успішного результату / Preserving a completed import.
+    // UA: failed() від дубліката Job не перезаписує вже успішно завершений імпорт.
+    // EN: failed() from a duplicate Job does not overwrite an already completed import.
     public function test_failed_does_not_overwrite_a_completed_import(): void
     {
         $import = $this->createImport([
@@ -431,6 +486,8 @@ class ProcessOfferImportTest extends TestCase
             Carbon::parse('2026-09-07 13:00:00')
         );
 
+        // UA: failed() від дубліката Job не повинен змінити completed-імпорт.
+        // EN: failed() from a duplicate Job must not alter a completed import.
         $job->failed(
             new RuntimeException('A duplicate Job failed.')
         );
@@ -454,6 +511,8 @@ class ProcessOfferImportTest extends TestCase
         string $supplierSlug = 'supplier-a',
         string $sentAt = '2026-09-07T10:00:00Z'
     ): OfferImport {
+        // UA: Створюємо запис імпорту напряму, без HTTP-шару.
+        // EN: Create an import record directly, bypassing the HTTP layer.
         $supplier = Supplier::query()
             ->where('slug', $supplierSlug)
             ->firstOrFail();
@@ -471,6 +530,8 @@ class ProcessOfferImportTest extends TestCase
 
     private function offerData(array $overrides = []): array
     {
+        // UA: Спільна коректна пропозиція; окремі тести змінюють лише потрібні поля.
+        // EN: A shared valid offer; individual tests modify only the relevant fields.
         return array_replace_recursive([
             'external_id' => 'offer-a-10001',
             'property' => [
