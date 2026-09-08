@@ -79,4 +79,14 @@ class OfferImportController extends Controller
             ->response()
             ->setStatusCode(202);
     }
+
+    public function show(OfferImport $import): JsonResponse
+    {
+        // UA: Laravel знаходить імпорт за ID маршруту або автоматично повертає 404.
+        // EN: Laravel finds the import by its route ID or automatically returns 404.
+
+        // UA: Повертаємо поточний стан імпорту та метадані обробки.
+        // EN: Return the current import status and processing metadata.
+        return (new OfferImportResource($import))->response();
+    }
 }
