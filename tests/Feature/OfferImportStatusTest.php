@@ -48,6 +48,8 @@ class OfferImportStatusTest extends TestCase
         $this->getJson("/api/imports/{$import->id}")
             ->assertOk()
             ->assertJsonPath('data.id', $import->id)
+            ->assertJsonPath('data.supplier', 'supplier-a')
+            ->assertJsonPath('data.external_import_id', $import->external_import_id)
             ->assertJsonPath('data.status', 'pending')
             ->assertJsonPath('data.total_offers', 1)
             ->assertJsonPath('data.processed_offers', 0)
@@ -55,8 +57,13 @@ class OfferImportStatusTest extends TestCase
                 'data.sent_at',
                 $import->sent_at->toJSON()
             )
+            ->assertJsonPath('data.error', null)
             ->assertJsonPath('data.started_at', null)
-            ->assertJsonPath('data.completed_at', null);
+            ->assertJsonPath('data.completed_at', null)
+            ->assertJsonPath(
+                'data.created_at',
+                $import->created_at->toJSON()
+            );
     }
 
     // UA: API повертає збережений стан processing.
@@ -78,6 +85,7 @@ class OfferImportStatusTest extends TestCase
             ->assertJsonPath('data.status', 'processing')
             ->assertJsonPath('data.total_offers', 1)
             ->assertJsonPath('data.processed_offers', 0)
+            ->assertJsonPath('data.error', null)
             ->assertJsonPath(
                 'data.sent_at',
                 $import->sent_at->toJSON()
@@ -110,6 +118,7 @@ class OfferImportStatusTest extends TestCase
             ->assertJsonPath('data.status', 'completed')
             ->assertJsonPath('data.total_offers', 1)
             ->assertJsonPath('data.processed_offers', 1)
+            ->assertJsonPath('data.error', null)
             ->assertJsonPath(
                 'data.sent_at',
                 $import->sent_at->toJSON()
@@ -143,6 +152,7 @@ class OfferImportStatusTest extends TestCase
             ->assertJsonPath('data.status', 'failed')
             ->assertJsonPath('data.total_offers', 1)
             ->assertJsonPath('data.processed_offers', 0)
+            ->assertJsonPath('data.error', 'Import processing failed.')
             ->assertJsonPath(
                 'data.sent_at',
                 $import->sent_at->toJSON()
@@ -169,24 +179,39 @@ class OfferImportStatusTest extends TestCase
     // EN: The API does not expose the incoming payload or internal error.
     public function test_it_does_not_expose_payload_or_internal_error(): void
     {
-        // UA: Обидва поля заповнені, щоб перевірка їх приховування була змістовною.
-        // EN: Populate both fields to make the omission check meaningful.
+        // UA: Зберігаємо технічну помилку, яка не повинна потрапити у відповідь.
+        // EN: Persist a technical error that must not appear in the response.
+        $internalError = 'Internal database error: diagnostic details.';
+
         $import = $this->createImport([
             'status' => ImportStatus::Failed,
-            'error' => 'Internal database error: diagnostic details.',
+            'error' => $internalError,
         ]);
 
         $this->assertNotEmpty($import->payload);
-        $this->assertNotEmpty($import->error);
+        $this->assertSame($internalError, $import->error);
 
+        $response = $this->getJson("/api/imports/{$import->id}");
         // UA: Публічна відповідь містить статус, але не діагностичні дані.
         // EN: The public response includes the status but omits diagnostic data.
-        $this->getJson("/api/imports/{$import->id}")
+        $response
             ->assertOk()
             ->assertJsonPath('data.id', $import->id)
             ->assertJsonPath('data.status', 'failed')
-            ->assertJsonMissingPath('data.payload')
-            ->assertJsonMissingPath('data.error');
+            ->assertJsonPath('data.error', 'Import processing failed.')
+            ->assertJsonMissingPath('data.payload');
+
+        $this->assertStringNotContainsString(
+            $internalError,
+            $response->getContent()
+        );
+
+        // UA: Формування відповіді не змінює збережену причину помилки.
+        // EN: Building the response does not change the persisted error details.
+        $this->assertSame(
+            $internalError,
+            $import->fresh()->error
+        );
     }
 
     // UA: Читання стану не змінює імпорт і не відправляє завдання.

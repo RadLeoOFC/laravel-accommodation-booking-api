@@ -44,12 +44,17 @@ class OfferImportTest extends TestCase
 
         $response = $this->postJson('/api/imports', $payload);
 
-        // UA: API має прийняти імпорт і повернути його ID та початковий статус.
-        // EN: The API must accept the import and return its ID and initial status.
+        // UA: Розширений ресурс також коректно працює у відповіді приймання імпорту.
+        // EN: The expanded resource also works in the import acceptance response.
         $response
-            ->assertStatus(202)
+            ->assertJsonPath('data.supplier', $payload['supplier'])
+            ->assertJsonPath(
+                'data.external_import_id',
+                $payload['external_import_id']
+            )
+            ->assertJsonPath('data.error', null)
             ->assertJsonStructure([
-                'data' => ['id', 'status'],
+                'data' => ['created_at'],
             ])
             ->assertJsonPath('data.status', 'pending');
 
