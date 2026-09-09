@@ -38,6 +38,11 @@ class Offer extends Model
         return $this->belongsTo(OfferImport::class);
     }
 
+    public function reservations()
+    {
+        return $this->hasMany(Reservation::class);
+    }
+
     protected $casts = [
         'check_in' => 'date',
         'check_out' => 'date',
