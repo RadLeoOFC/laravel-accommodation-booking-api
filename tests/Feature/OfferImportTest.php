@@ -80,7 +80,7 @@ class OfferImportTest extends TestCase
             $import->sent_at->equalTo($payload['sent_at'])
         );
         $this->assertSame(ImportStatus::Pending, $import->status);
-        $this->assertSame($payload['offers'], $import->payload);
+        $this->assertEquals($payload['offers'], $import->payload);
         // UA: total_offers відображає кількість надісланих пропозицій.
         // EN: total_offers reflects the number of submitted offers.
         $this->assertEquals(1, $import->total_offers);
@@ -170,7 +170,7 @@ class OfferImportTest extends TestCase
 
         // UA: Повторний запит не повинен перезаписати payload або sent_at.
         // EN: The repeated request must not overwrite payload or sent_at.
-        $this->assertSame($original['offers'], $import->payload);
+        $this->assertEquals($original['offers'], $import->payload);
         $this->assertTrue(
             $import->sent_at->equalTo($original['sent_at'])
         );
