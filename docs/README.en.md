@@ -277,3 +277,12 @@ Automated tests use database isolation, factories, seeders, and a fake queue whe
 - Empty search results: check exact dates, guests, city, stock, `expires_at`, exchange rates, and pagination.
 - XAMPP port `3306` conflict: this Compose setup publishes MySQL on host port `3307`; check `.env`.
 - After changing `.env`, run `php artisan config:clear` and restart the server and worker.
+
+## Author
+
+**Radyslav Lebediev** — PHP / Laravel Developer.
+
+Developed as a take-home assignment for WTG Spain.
+
+- GitHub: [RadLeoOFC](https://github.com/RadLeoOFC)
+- Telegram: [@IT_globe](https://t.me/IT_globe)

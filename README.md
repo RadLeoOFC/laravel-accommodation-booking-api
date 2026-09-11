@@ -277,3 +277,12 @@ php artisan test
 - Порожня видача: перевірте точні дати, гостей, місто, залишок, `expires_at`, курси валют і сторінку пагінації.
 - XAMPP-конфлікт порту `3306`: цей Compose використовує порт хоста `3307`; перевірте налаштування `.env`.
 - Після зміни `.env`: виконайте `php artisan config:clear` і перезапустіть сервер та worker.
+
+## Автор
+
+**Радислав Лебедєв** — PHP / Laravel Developer.
+
+Розроблено як тестове завдання для WTG Spain.
+
+- GitHub: [RadLeoOFC](https://github.com/RadLeoOFC)
+- Telegram: [@IT_globe](https://t.me/IT_globe)
