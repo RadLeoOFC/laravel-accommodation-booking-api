@@ -1,0 +1,37 @@
+{
+    "supplier": "supplier-b",
+    "external_import_id": "demo-multicity-b-2026-09-11-001",
+    "sent_at": "2026-09-11T09:05:00Z",
+    "offers": [
+        {
+            "external_id": "demo-b-bcn-01",
+            "property": {
+                "code": "BCN-DEMO-01",
+                "name": "Example Family Apartment",
+                "city": "Barcelona"
+            },
+            "check_in": "2026-10-10",
+            "check_out": "2026-10-15",
+            "max_guests": 4,
+            "price": 100.0,
+            "currency": "EUR",
+            "available_units": 2,
+            "expires_at": "2026-10-01T23:59:59Z"
+        },
+        {
+            "external_id": "demo-b-lon-01",
+            "property": {
+                "code": "LON-DEMO-01",
+                "name": "Camden Family Apartment",
+                "city": "London"
+            },
+            "check_in": "2026-10-10",
+            "check_out": "2026-10-15",
+            "max_guests": 4,
+            "price": 140.0,
+            "currency": "USD",
+            "available_units": 2,
+            "expires_at": "2026-10-01T23:59:59Z"
+        }
+    ]
+}

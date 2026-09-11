@@ -205,6 +205,94 @@ $search.data | Where-Object { $_.code -eq $propertyCode } | ConvertTo-Json -Dept
 
 Expect `200`, the same reservation ID, and stock still equal to 1. A new `client_reference` represents a new reservation. Once stock is exhausted, the offer disappears from search, but an identical retry still returns the existing reservation.
 
+## Demo imports
+
+Two batches provide **9 properties and 11 offers** across Barcelona, Burgas, Rome, and London.
+
+- [supplier-a offers](examples/import-supplier-a.json) — 9 offers.
+- [supplier-b offers](examples/import-supplier-b.json) — 2 alternative offers for the same properties in Barcelona and London.
+
+The batches include different prices, currencies, stay dates, guest capacities, and stock levels.
+
+### Submitting the batches
+
+Start the HTTP server and the `imports` queue worker. Run the following PowerShell commands from the project root.
+
+```powershell
+$baseUrl = "http://127.0.0.1:8002"
+$headers = @{ Accept = "application/json" }
+
+$bodyA = Get-Content -Raw -Encoding UTF8 docs/examples/import-supplier-a.json
+$importA = Invoke-RestMethod -Uri "$baseUrl/api/imports" -Method Post -Headers $headers -ContentType "application/json" -Body $bodyA
+$importA | ConvertTo-Json -Depth 10
+```
+
+Check the status:
+
+```powershell
+Invoke-RestMethod -Uri "$baseUrl/api/imports/$($importA.data.id)" -Headers $headers | ConvertTo-Json -Depth 10
+```
+
+After it reaches `completed`, submit the second batch:
+
+```powershell
+$bodyB = Get-Content -Raw -Encoding UTF8 docs/examples/import-supplier-b.json
+$importB = Invoke-RestMethod -Uri "$baseUrl/api/imports" -Method Post -Headers $headers -ContentType "application/json" -Body $bodyB
+$importB | ConvertTo-Json -Depth 10
+```
+
+```powershell
+Invoke-RestMethod -Uri "$baseUrl/api/imports/$($importB.data.id)" -Headers $headers | ConvertTo-Json -Depth 10
+```
+
+Both imports should reach `completed`: the first with `processed_offers = 9`, the second with `processed_offers = 2`.
+
+### Checking search results
+
+```powershell
+$query = "check_in=2026-10-10&check_out=2026-10-15&guests=2"
+Invoke-RestMethod -Uri "$baseUrl/api/properties?city=Barcelona&$query" -Headers $headers | ConvertTo-Json -Depth 10
+```
+
+Expected results among the demo properties, before creating reservations:
+
+| Conditions                         | Expected result                                                                              |
+| ---------------------------------- | -------------------------------------------------------------------------------------------- |
+| Barcelona, October 10–15, 2 guests | `BCN-DEMO-02` at EUR 85, followed by `BCN-DEMO-01` at EUR 100 from supplier-b                |
+| Barcelona, October 20–25, 2 guests | `BCN-DEMO-03` at EUR 160                                                                     |
+| Burgas, October 10–15, 2 guests    | Only `BRG-DEMO-01` at EUR 65                                                                 |
+| Burgas, October 10–15, 1 guest     | `BRG-DEMO-02` at EUR 45 and `BRG-DEMO-01` at EUR 65                                          |
+| Rome, October 10–15, 2 guests      | Only `ROM-DEMO-01`                                                                           |
+| London, October 10–15, 2 guests    | One `LON-DEMO-01`; the choice between GBP 110 and USD 140 depends on database exchange rates |
+| No city, October 10–15, 2 guests   | 5 properties from this dataset                                                               |
+
+`LON-DEMO-02` is excluded because its stock is zero. Each property appears only once, even when multiple suppliers have offers for it.
+
+### Pagination
+
+```powershell
+$page1 = Invoke-RestMethod -Uri "$baseUrl/api/properties?$query&per_page=2&page=1" -Headers $headers
+$page1 | ConvertTo-Json -Depth 10
+```
+
+Fetch the next page using `links.next` when it is not `null`:
+
+```powershell
+$page2 = Invoke-RestMethod -Uri $page1.links.next -Headers $headers
+$page2 | ConvertTo-Json -Depth 10
+```
+
+With no other matching records, the five properties produce three pages: 2, 2, and 1 results. The first page has `prev = null`; the final page has `next = null`. `last = null` reflects the use of `simplePaginate()`, which does not calculate the total number of pages.
+
+### Reusing the examples
+
+- The files use `expires_at = 2026-10-01T23:59:59Z`. Update the expiration timestamp when testing after that point.
+- When necessary, update stay dates in both the batches and search parameters.
+- Resubmitting an unchanged batch returns the existing import without processing it again.
+- To submit changed data as a new import, use a new `external_import_id` and an updated `sent_at`. Keep offer `external_id` values when updating existing offers.
+- A new import can overwrite offer stock; do not submit it between steps of a stock-decrement check.
+- Expected result counts depend on other database records and reservations already created.
+
 ## Automated tests
 
 Create the local test environment file using PowerShell or Bash:

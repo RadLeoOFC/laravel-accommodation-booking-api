@@ -205,6 +205,94 @@ $search.data | Where-Object { $_.code -eq $propertyCode } | ConvertTo-Json -Dept
 
 Очікується `200`, той самий ID бронювання та залишок 1. Новий `client_reference` означає нове бронювання. Після вичерпання залишку пропозиція зникає з пошуку, але ідентичний повторний запит усе ще повертає створене бронювання.
 
+## Демонстраційні імпорти
+
+Для перевірки пошуку підготовлено два пакети: **9 об’єктів житла та 11 пропозицій** у Barcelona, Burgas, Rome і London.
+
+- [Пропозиції supplier-a](docs/examples/import-supplier-a.json) — 9 пропозицій.
+- [Пропозиції supplier-b](docs/examples/import-supplier-b.json) — 2 альтернативні пропозиції для тих самих об’єктів у Barcelona та London.
+
+У пакетах використовуються різні ціни, валюти, дати проживання, місткість і залишки.
+
+### Надсилання пакетів
+
+Запустіть HTTP-сервер і worker черги `imports`. Наведені команди виконуйте в PowerShell із кореня проєкту.
+
+```powershell
+$baseUrl = "http://127.0.0.1:8002"
+$headers = @{ Accept = "application/json" }
+
+$bodyA = Get-Content -Raw -Encoding UTF8 docs/examples/import-supplier-a.json
+$importA = Invoke-RestMethod -Uri "$baseUrl/api/imports" -Method Post -Headers $headers -ContentType "application/json" -Body $bodyA
+$importA | ConvertTo-Json -Depth 10
+```
+
+Перевірте статус:
+
+```powershell
+Invoke-RestMethod -Uri "$baseUrl/api/imports/$($importA.data.id)" -Headers $headers | ConvertTo-Json -Depth 10
+```
+
+Після `completed` надішліть другий пакет:
+
+```powershell
+$bodyB = Get-Content -Raw -Encoding UTF8 docs/examples/import-supplier-b.json
+$importB = Invoke-RestMethod -Uri "$baseUrl/api/imports" -Method Post -Headers $headers -ContentType "application/json" -Body $bodyB
+$importB | ConvertTo-Json -Depth 10
+```
+
+```powershell
+Invoke-RestMethod -Uri "$baseUrl/api/imports/$($importB.data.id)" -Headers $headers | ConvertTo-Json -Depth 10
+```
+
+Обидва імпорти повинні отримати статус `completed`: перший із `processed_offers = 9`, другий — із `processed_offers = 2`.
+
+### Перевірка пошуку
+
+```powershell
+$query = "check_in=2026-10-10&check_out=2026-10-15&guests=2"
+Invoke-RestMethod -Uri "$baseUrl/api/properties?city=Barcelona&$query" -Headers $headers | ConvertTo-Json -Depth 10
+```
+
+Очікувані результати серед демонстраційних об’єктів, до створення бронювань:
+
+| Умови                            | Очікуваний результат                                                      |
+| -------------------------------- | ------------------------------------------------------------------------- |
+| Barcelona, 10–15 жовтня, 2 гості | `BCN-DEMO-02` за 85 EUR, потім `BCN-DEMO-01` за 100 EUR від supplier-b    |
+| Barcelona, 20–25 жовтня, 2 гості | `BCN-DEMO-03` за 160 EUR                                                  |
+| Burgas, 10–15 жовтня, 2 гості    | Лише `BRG-DEMO-01` за 65 EUR                                              |
+| Burgas, 10–15 жовтня, 1 гість    | `BRG-DEMO-02` за 45 EUR та `BRG-DEMO-01` за 65 EUR                        |
+| Rome, 10–15 жовтня, 2 гості      | Лише `ROM-DEMO-01`                                                        |
+| London, 10–15 жовтня, 2 гості    | Один `LON-DEMO-01`; вибір між 110 GBP та 140 USD залежить від курсів у БД |
+| Без міста, 10–15 жовтня, 2 гості | 5 об’єктів із цього набору                                                |
+
+`LON-DEMO-02` виключається через нульовий залишок. Один об’єкт повертається лише один раз, навіть якщо для нього є пропозиції різних постачальників.
+
+### Пагінація
+
+```powershell
+$page1 = Invoke-RestMethod -Uri "$baseUrl/api/properties?$query&per_page=2&page=1" -Headers $headers
+$page1 | ConvertTo-Json -Depth 10
+```
+
+Наступну сторінку можна отримати за `links.next`, якщо посилання не дорівнює `null`:
+
+```powershell
+$page2 = Invoke-RestMethod -Uri $page1.links.next -Headers $headers
+$page2 | ConvertTo-Json -Depth 10
+```
+
+Якщо інших відповідних записів немає, п’ять об’єктів розподіляються на три сторінки: 2, 2 та 1. На першій сторінці `prev = null`, на останній — `next = null`. `last = null` відповідає використанню `simplePaginate()`, який не визначає загальну кількість сторінок.
+
+### Повторне використання прикладів
+
+- `expires_at` у файлах — `2026-10-01T23:59:59Z`. Для перевірки після цього моменту оновіть строк актуальності.
+- За потреби змініть дати проживання одночасно в пакетах і параметрах пошуку.
+- Повторне надсилання незміненого пакета повертає існуючий імпорт і не запускає обробку повторно.
+- Для нового імпорту зі зміненими даними задайте новий `external_import_id` та актуальний `sent_at`. Збережіть `external_id` пропозицій, якщо потрібно оновити їх.
+- Новий імпорт може перезаписати залишки пропозицій; не надсилайте його між кроками перевірки списання залишку.
+- Очікувана кількість результатів залежить від інших даних у базі та вже створених бронювань.
+
 ## Автоматизовані тести
 
 Створіть локальний файл тестового середовища (PowerShell або Bash):

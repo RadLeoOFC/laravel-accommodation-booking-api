@@ -1,0 +1,142 @@
+{
+    "supplier": "supplier-a",
+    "external_import_id": "demo-multicity-a-2026-09-11-001",
+    "sent_at": "2026-09-11T09:00:00Z",
+    "offers": [
+        {
+            "external_id": "demo-a-bcn-01",
+            "property": {
+                "code": "BCN-DEMO-01",
+                "name": "Example Family Apartment",
+                "city": "Barcelona"
+            },
+            "check_in": "2026-10-10",
+            "check_out": "2026-10-15",
+            "max_guests": 4,
+            "price": 120.0,
+            "currency": "EUR",
+            "available_units": 3,
+            "expires_at": "2026-10-01T23:59:59Z"
+        },
+        {
+            "external_id": "demo-a-bcn-02",
+            "property": {
+                "code": "BCN-DEMO-02",
+                "name": "Gracia Studio",
+                "city": "Barcelona"
+            },
+            "check_in": "2026-10-10",
+            "check_out": "2026-10-15",
+            "max_guests": 2,
+            "price": 85.0,
+            "currency": "EUR",
+            "available_units": 2,
+            "expires_at": "2026-10-01T23:59:59Z"
+        },
+        {
+            "external_id": "demo-a-bcn-03",
+            "property": {
+                "code": "BCN-DEMO-03",
+                "name": "Poblenou Terrace Apartment",
+                "city": "Barcelona"
+            },
+            "check_in": "2026-10-20",
+            "check_out": "2026-10-25",
+            "max_guests": 6,
+            "price": 160.0,
+            "currency": "EUR",
+            "available_units": 1,
+            "expires_at": "2026-10-01T23:59:59Z"
+        },
+        {
+            "external_id": "demo-a-brg-01",
+            "property": {
+                "code": "BRG-DEMO-01",
+                "name": "Sea Garden Apartment",
+                "city": "Burgas"
+            },
+            "check_in": "2026-10-10",
+            "check_out": "2026-10-15",
+            "max_guests": 4,
+            "price": 65.0,
+            "currency": "EUR",
+            "available_units": 2,
+            "expires_at": "2026-10-01T23:59:59Z"
+        },
+        {
+            "external_id": "demo-a-brg-02",
+            "property": {
+                "code": "BRG-DEMO-02",
+                "name": "Burgas Solo Studio",
+                "city": "Burgas"
+            },
+            "check_in": "2026-10-10",
+            "check_out": "2026-10-15",
+            "max_guests": 1,
+            "price": 45.0,
+            "currency": "EUR",
+            "available_units": 1,
+            "expires_at": "2026-10-01T23:59:59Z"
+        },
+        {
+            "external_id": "demo-a-rom-01",
+            "property": {
+                "code": "ROM-DEMO-01",
+                "name": "Trastevere Family Apartment",
+                "city": "Rome"
+            },
+            "check_in": "2026-10-10",
+            "check_out": "2026-10-15",
+            "max_guests": 4,
+            "price": 130.0,
+            "currency": "EUR",
+            "available_units": 2,
+            "expires_at": "2026-10-01T23:59:59Z"
+        },
+        {
+            "external_id": "demo-a-rom-02",
+            "property": {
+                "code": "ROM-DEMO-02",
+                "name": "Prati Courtyard Studio",
+                "city": "Rome"
+            },
+            "check_in": "2026-10-20",
+            "check_out": "2026-10-25",
+            "max_guests": 2,
+            "price": 95.0,
+            "currency": "EUR",
+            "available_units": 2,
+            "expires_at": "2026-10-01T23:59:59Z"
+        },
+        {
+            "external_id": "demo-a-lon-01",
+            "property": {
+                "code": "LON-DEMO-01",
+                "name": "Camden Family Apartment",
+                "city": "London"
+            },
+            "check_in": "2026-10-10",
+            "check_out": "2026-10-15",
+            "max_guests": 4,
+            "price": 110.0,
+            "currency": "GBP",
+            "available_units": 2,
+            "expires_at": "2026-10-01T23:59:59Z"
+        },
+        {
+            "external_id": "demo-a-lon-02",
+            "property": {
+                "code": "LON-DEMO-02",
+                "name": "Greenwich Riverside Studio",
+                "city": "London"
+            },
+            "check_in": "2026-10-10",
+            "check_out": "2026-10-15",
+            "max_guests": 2,
+            "price": 90.0,
+            "currency": "GBP",
+            "available_units": 0,
+            "expires_at": "2026-10-01T23:59:59Z"
+        }
+    ]
+}
